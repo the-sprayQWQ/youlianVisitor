@@ -1,0 +1,199 @@
+{
+  "globalStyle": {
+    "navigationStyle": "default",
+    "navigationBarTitleText": "unibest",
+    "navigationBarBackgroundColor": "#f8f8f8",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#FFFFFF"
+  },
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^fg-(.*)": "@/components/fg-$1/fg-$1.vue",
+      "^wd-(.*)": "wot-design-uni/components/wd-$1/wd-$1.vue",
+      "^(?!z-paging-refresh|z-paging-load-more)z-paging(.*)": "z-paging/components/z-paging$1/z-paging$1.vue"
+    }
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#8c8c8c",
+    "selectedColor": "#1677ff",
+    "backgroundColor": "#F8F8F8",
+    "borderStyle": "black",
+    "height": "50px",
+    "fontSize": "10px",
+    "iconWidth": "24px",
+    "spacing": "3px",
+    "list": [
+      {
+        "iconType": "unocss",
+        "icon": "i-carbon:home",
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "text": "消息",
+        "icon": "i-carbon:home",
+        "pagePath": "pages/message/message",
+        "iconType": "unocss"
+      },
+      {
+        "text": "我的",
+        "pagePath": "pages/mine/mine",
+        "iconType": "unocss",
+        "icon": "i-carbon:home"
+      },
+      {
+        "text": "审批",
+        "pagePath": "pages/doorKeeperApproval/doorKeeperApproval",
+        "iconType": "unocss",
+        "icon": "i-carbon:align-box-top-left"
+      },
+      {
+        "text": "审批",
+        "pagePath": "pages/audit/audit",
+        "iconType": "unocss",
+        "icon": "i-carbon:align-box-top-left"
+      },
+      {
+        "text": "扫码登记",
+        "pagePath": "pages/codeRegister/codeRegister",
+        "iconType": "unocss",
+        "icon": "i-carbon:qr-code"
+      },
+      {
+        "text": "访客记录",
+        "pagePath": "pages/visitorRecord/visitorRecord",
+        "iconType": "unocss",
+        "icon": "i-carbon:rotate-360"
+      }
+    ]
+  },
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "type": "home",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/login/admin",
+      "type": "home",
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "管理员登录"
+      }
+    },
+    {
+      "path": "pages/appointRecord/appointRecord",
+      "type": "page",
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "预约记录"
+      }
+    },
+    {
+      "path": "pages/audit/audit",
+      "type": "page",
+      "layout": "tabbar",
+      "needLogin": true,
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "访客审批"
+      }
+    },
+    {
+      "path": "pages/codeRegister/codeRegister",
+      "type": "page",
+      "layout": "tabbar",
+      "needLogin": true,
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "扫码登记"
+      }
+    },
+    {
+      "path": "pages/doorKeeperApproval/doorKeeperApproval",
+      "type": "page",
+      "layout": "tabbar",
+      "needLogin": true,
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "审批"
+      }
+    },
+    {
+      "path": "pages/employApplication/employApplication",
+      "type": "page",
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "员工核验申请"
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "type": "page",
+      "layout": "tabbar",
+      "needLogin": true,
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "首页"
+      }
+    },
+    {
+      "path": "pages/message/message",
+      "type": "page",
+      "layout": "tabbar",
+      "needLogin": true,
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "消息通知"
+      }
+    },
+    {
+      "path": "pages/mine/mine",
+      "type": "page",
+      "layout": "tabbar",
+      "needLogin": true,
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/visitorApplication/visitorApplication",
+      "type": "page",
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "访客入厂申请单"
+      }
+    },
+    {
+      "path": "pages/visitorRecord/visitorRecord",
+      "type": "page",
+      "layout": "tabbar",
+      "needLogin": true,
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "访客记录"
+      }
+    }
+  ],
+  "subPackages": [
+    {
+      "root": "pages-sub",
+      "pages": [
+        {
+          "path": "demo/index",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationBarTitleText": "分包页面"
+          }
+        }
+      ]
+    }
+  ]
+}
