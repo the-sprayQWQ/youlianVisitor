@@ -4,7 +4,6 @@ import type {
   IRoleInfo,
 } from '@/api/types/role'
 import { http } from '@/http/http'
-import { pages } from '@/pages.json'
 
 export interface IForm {
   user: string
@@ -33,10 +32,20 @@ export function getYlfkApplicationList(
   pageNo: number,
   pageSize: number,
   createBy: string,
+  applicationCode?: string,
+  applicationDate?: string,
+  applicationType?: string,
 ) {
   return http.get<IApplicationList>(
     '/processApplication/processApplication/listVisitor',
-    { pageNo, pageSize, createBy },
+    {
+      pageNo,
+      pageSize,
+      createBy,
+      applicationCode,
+      applicationDate,
+      applicationType,
+    },
   )
 }
 
@@ -47,7 +56,7 @@ export function getYlfkApplicationDetail(
   applicationCode: string,
   applicationType: string,
 ) {
-  return http.get(
+  return http.get<any>(
     '/visitor/ylfkApplication/queryAllApplicationListByApplicationCode',
     { applicationCode, applicationType },
   )
@@ -61,10 +70,25 @@ export function getYlfkProcessApplication(
   pageSize: number,
   recordStatus: string,
   currentRecordUser: string,
+  applicationStatus?: string,
+  idCard?: string,
+  user?: string,
+  applicationDate?: string,
+  applicationCode?: string,
+  applicationType?: string,
 ) {
   return http.get<IProcessList>(
     '/processApplication/processApplication/listApproval',
-    { pageNo, pageSize, recordStatus, currentRecordUser },
+    {
+      pageNo,
+      pageSize,
+      recordStatus,
+      currentRecordUser,
+      applicationStatus,
+      applicationDate,
+      applicationCode,
+      applicationType,
+    },
   )
 }
 
@@ -89,11 +113,14 @@ export function toApprovalApplication(form: IForm) {
  * 获取在厂访客列表
  */
 export function getInVisitorList(pageNo: number, pageSize: number) {
-  return http.get<IProcessList>('/visitor/ylfkApplication/queryYlfkApplicationUser', {
-    pageNo,
-    pageSize,
-    applicationStatus: '3',
-  })
+  return http.get<IProcessList>(
+    '/visitor/ylfkApplication/queryYlfkApplicationUser',
+    {
+      pageNo,
+      pageSize,
+      applicationStatus: '3',
+    },
+  )
 }
 
 /**
@@ -101,4 +128,29 @@ export function getInVisitorList(pageNo: number, pageSize: number) {
  */
 export function submitLeaveApplication(user: string, applicationCode: string) {
   return http.get('/application/leaveFactory', { user, applicationCode })
+}
+
+/**
+ * 扫码登记
+ */
+export function scanRegister(phone: string, applyId: string) {
+  return http.post('/application/QrCodeVerification', {
+    phone,
+    applicationCode: applyId,
+  })
+}
+
+/**
+ * 回收临时访客号和车牌
+ */
+export function recycleInfo(
+  applicationCode: string,
+  name: string,
+  idCard: string,
+) {
+  return http.post('/application/recycleTemporaryInfo', {
+    applicationCode,
+    name,
+    idCard,
+  })
 }

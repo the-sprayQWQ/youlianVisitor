@@ -57,7 +57,7 @@ const tmplIds = ['V0U7bx0ALhbBB2gl9aqstWVQWxUauJdm_rrkMl76m3g']
         />
       </view>
       <view class="title">
-        欢迎使用友联访客系统
+        欢迎使用友联畅行智管系统
       </view>
       <!--
       @click="visitorLogin"

@@ -3,7 +3,7 @@ import type { IApplicationList } from '@/api/types/role'
 import { submitLeaveApplication } from '@/api/role'
 
 const props = defineProps<{ recordList: IApplicationList['records'] }>()
-const emit = defineEmits(['toDetail'])
+const emit = defineEmits(['toDetail', 'refresh'])
 const userStore = useUserStore()
 const currentUser = userStore.userInfo.userInfo.id
 function toDetail(id: string, applyId: string, applicationName: string, currentNode: string) {
@@ -12,7 +12,19 @@ function toDetail(id: string, applyId: string, applicationName: string, currentN
 async function submitLeave(applicationCode: string) {
   const res = await submitLeaveApplication(currentUser, applicationCode)
   if (res.code === 200) {
-    console.log(res)
+    uni.showToast({
+      title: '离场申请已提交',
+      icon: 'success',
+      duration: 2000
+    })
+    // 通知父组件刷新数据
+    emit('refresh')
+  } else {
+    uni.showToast({
+      title: '提交失败，请重试',
+      icon: 'none',
+      duration: 2000
+    })
   }
 }
 // 处理离场按钮点击

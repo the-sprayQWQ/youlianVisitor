@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CustomTabBarItem } from './config'
+import { scanRegister } from '@/api/role'
 import { useUserStore } from '@/store'
 import {
   customTabbarEnable,
@@ -57,12 +58,12 @@ const list = computed(() => {
       //   iconType: 'unocss',
       //   icon: 'i-carbon:rotate-360',
       // },
-      // {
-      //   text: '扫码登记',
-      //   pagePath: '/pages/codeRegister/codeRegister',
-      //   iconType: 'unocss',
-      //   icon: 'i-carbon:qr-code',
-      // },
+      {
+        text: '扫码登记',
+        pagePath: '/pages/codeRegister/codeRegister',
+        iconType: 'unocss',
+        icon: 'i-carbon:qr-code',
+      },
       {
         text: '我的',
         pagePath: '/pages/mine/mine',
@@ -116,7 +117,9 @@ function handleClick(index: number) {
   if (url === '/pages/codeRegister/codeRegister') {
     uni.scanCode({
       success: (res) => {
-        console.log(res)
+        const result = JSON.parse(res.result)
+        console.log(JSON.parse(res.result), 'res.result')
+        scanRegister(result.phone, result.applyId)
       },
     })
     return

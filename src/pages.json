@@ -139,7 +139,8 @@
       "needLogin": true,
       "style": {
         "navigationStyle": "default",
-        "navigationBarTitleText": "首页"
+        "navigationBarTitleText": "首页",
+        "enablePullDownRefresh": true
       }
     },
     {
@@ -160,6 +161,15 @@
       "style": {
         "navigationStyle": "default",
         "navigationBarTitleText": "我的"
+      }
+    },
+    {
+      "path": "pages/qrCode/qrCode",
+      "type": "page",
+      "needLogin": true,
+      "style": {
+        "navigationStyle": "default",
+        "navigationBarTitleText": "申请成功"
       }
     },
     {

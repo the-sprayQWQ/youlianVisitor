@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
+import { recycleInfo } from '@/api/role'
 
 const props = defineProps({
   visitorList: [],
@@ -19,22 +20,6 @@ const signOutForm = ref({
   visitorCard: false,
   licensePlate: false,
 })
-
-// 根据当前状态获取标签信息
-function getStatusInfo() {
-  if (props.currentStatus === 'waiting') {
-    return {
-      text: '待审核',
-      class: 'status-waiting',
-    }
-  }
-  else {
-    return {
-      text: '在厂中',
-      class: 'status-approved',
-    }
-  }
-}
 
 // 根据当前状态获取操作按钮信息
 function getActionInfo() {
@@ -56,6 +41,7 @@ function getActionInfo() {
 
 // 处理签离按钮点击
 function handleSignOut(item: any) {
+  console.log('签离', item)
   currentSignOutItem.value = item
   // 重置表单
   signOutForm.value = {
@@ -76,12 +62,9 @@ function handleCheckboxItemClick(field: string) {
 }
 
 // 确认签离
-function confirmSignOut() {
-  console.log('确认签离', {
-    visitor: currentSignOutItem.value,
-    form: signOutForm.value,
-  })
+async function confirmSignOut() {
   // 这里可以调用API进行签离操作
+  await recycleInfo(currentSignOutItem.value.applicationCode, currentSignOutItem.value.name, currentSignOutItem.value.idCard)
   showSignOutModal.value = false
 }
 
@@ -114,13 +97,13 @@ function toApproval(applyId: string, applicationType: string, currentNode: strin
     <!-- 访客信息 -->
     <view class="item-content">
       <view class="visitor-name">
-        {{ item.user }}
+        {{ props.currentStatus === 'approved' ? item.name : item.user }}
       </view>
       <view class="visitor-info">
         <text class="info-text">身份证:{{ item.idCard }}</text>
       </view>
       <view class="visitor-info">
-        <text class="info-text">申请类型:{{ item.applicationTypeName }}</text>
+        <text class="info-text">申请类型:{{ props.currentStatus === 'approved' ? item.applicationTypeName : item.applicationTypeName }}</text>
       </view>
       <view class="visitor-info">
         <text class="info-text">
@@ -143,7 +126,7 @@ function toApproval(applyId: string, applicationType: string, currentNode: strin
       <view
         v-else
         class="action-tag action-checkout"
-        @click="handleSignOut(item)"
+        @click.prevent="handleSignOut(item)"
       >
         <view :class="`${getActionInfo().icon} btn-icon`" />
         {{ getActionInfo().text }}
@@ -185,7 +168,7 @@ function toApproval(applyId: string, applicationType: string, currentNode: strin
             </view>
             <view class="item-text">
               <text class="item-label">临时访客证号</text>
-              <text class="item-value">V20231115</text>
+              <text class="item-value">{{ currentSignOutItem?.visitorNumber }}</text>
             </view>
           </view>
         </view>
@@ -205,7 +188,7 @@ function toApproval(applyId: string, applicationType: string, currentNode: strin
             </view>
             <view class="item-text">
               <text class="item-label">收到车牌号</text>
-              <text class="item-value">苏A88888</text>
+              <text class="item-value">{{ currentSignOutItem?.carNumber }}</text>
             </view>
           </view>
         </view>

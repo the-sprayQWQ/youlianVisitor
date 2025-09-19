@@ -136,7 +136,7 @@ async function handleLogin(loginType: string) {
         />
       </view>
       <view class="title">
-        友联访客系统
+        友联畅行智管系统
       </view>
 
       <!-- 新增：登录表单区域 -->
@@ -216,7 +216,7 @@ async function handleLogin(loginType: string) {
 
         <!-- 版权信息 -->
         <view class="copyright">
-          Copyright © 2024 友联访客系统 版权所有
+          Copyright © 2024 友联畅行智管系统 版权所有
         </view>
       </view>
     </view>

@@ -82,6 +82,7 @@ const initData = {
     allUsers: '',
     isCar: false,
     carCode: '',
+    carNumber: '',
     isHaveGoods: false,
     goodsInfo: '',
     checkUsersList: [
@@ -112,10 +113,11 @@ const form1 = {
   carNumber: '',
   carImage: '',
   goodsImage: '',
+  leaveCarImage: '',
+  leaveGoodsImage: '',
 }
 
 const applicationNumber = ref('')
-const uploadedFileName = ref('')
 
 const approvals = ref({
   manager: false,
@@ -173,15 +175,16 @@ async function getResult(code: string) {
 
 // 根据流程信息设置审批状态回显
 function setApprovalStatusFromResult(resultList: any[]) {
-  if (!resultList || !Array.isArray(resultList)) return
+  if (!resultList || !Array.isArray(resultList))
+    return
 
   // 重置所有审批状态
-  Object.keys(approvals.value).forEach(key => {
+  Object.keys(approvals.value).forEach((key) => {
     approvals.value[key] = false
   })
 
   // 遍历流程信息，设置对应的审批状态
-  resultList.forEach(item => {
+  resultList.forEach((item) => {
     if (item.applicatiResult_dictText === '通过') {
       const nodeName = item.nodeName
 
@@ -217,12 +220,197 @@ function onDepartmentChange(e: any) {
 
 // 导入Excel
 function importExcel() {
-  // TODO: 实现Excel导入功能
-}
+  // 在H5环境下使用input file选择
+  // #ifdef H5
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.xlsx,.xls'
+  input.style.display = 'none'
 
-// 下载文件
-function downloadFile() {
-  // TODO: 实现文件下载功能
+  input.onchange = (event) => {
+    const file = event.target.files[0]
+    if (!file)
+      return
+
+    // 检查文件类型
+    const fileName = file.name
+    const fileExtension = fileName.split('.').pop().toLowerCase()
+    if (!['xlsx', 'xls'].includes(fileExtension)) {
+      uni.showToast({
+        title: '请选择Excel文件(.xlsx或.xls)',
+        icon: 'none',
+        duration: 3000,
+      })
+      return
+    }
+
+    uni.showLoading({
+      title: '正在上传Excel文件...',
+      mask: true,
+    })
+
+    const userStore = useUserStore()
+    const token = userStore.userInfo?.token || ''
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    // 使用fetch上传文件
+    fetch(`${import.meta.env.VITE_SERVER_BASEURL}/visitor/ylfkApplication/importYlfkApplicationUser`, {
+      method: 'POST',
+      headers: {
+        'X-Access-Token': token,
+      },
+      body: formData,
+    })
+      .then(response => response.json())
+      .then((result) => {
+        uni.hideLoading()
+        if (result.code === 200) {
+          uni.showToast({
+            title: 'Excel导入成功',
+            icon: 'success',
+            duration: 2000,
+          })
+
+          // 如果返回了导入的数据，可以更新表单
+          if (result.result && Array.isArray(result.result)) {
+          // 映射数据字段，确保字段名正确
+            const mappedData = result.result.map(item => ({
+              name: item.name || item.userName || '',
+              cardCode: item.cardCode || item.idCard || item.idCardNo || '',
+              phone: item.phone || item.phoneNumber || item.mobile || '',
+              insurance: item.insurance || '',
+            }))
+            form.value.ylfkCheckApplicationPage.checkUsersList = mappedData
+          }
+        }
+        else {
+          uni.showToast({
+            title: result.message || 'Excel导入失败',
+            icon: 'none',
+            duration: 3000,
+          })
+        }
+      })
+      .catch((error) => {
+        uni.hideLoading()
+        console.error('Excel文件上传失败:', error)
+        uni.showToast({
+          title: 'Excel文件上传失败',
+          icon: 'none',
+          duration: 3000,
+        })
+      })
+
+    // 清理input元素
+    document.body.removeChild(input)
+  }
+
+  document.body.appendChild(input)
+  input.click()
+  // #endif
+
+  // 在小程序环境下使用chooseMessageFile
+  // #ifdef MP-WEIXIN
+  uni.chooseMessageFile({
+    count: 1,
+    type: 'file',
+    extension: ['xlsx', 'xls'],
+    success: (res) => {
+      const filePath = res.tempFiles[0].path
+      const fileName = res.tempFiles[0].name
+
+      uni.showLoading({
+        title: '正在上传Excel文件...',
+        mask: true,
+      })
+
+      const userStore = useUserStore()
+      const token = userStore.userInfo?.token || ''
+
+      uni.uploadFile({
+        url: `${import.meta.env.VITE_SERVER_BASEURL}/visitor/ylfkApplication/importYlfkApplicationUser`,
+        filePath,
+        name: 'file',
+        header: {
+          'X-Access-Token': token,
+        },
+        success: (uploadRes) => {
+          uni.hideLoading()
+          try {
+            const result = JSON.parse(uploadRes.data)
+            if (result.code === 200) {
+              uni.showToast({
+                title: 'Excel导入成功',
+                icon: 'success',
+                duration: 2000,
+              })
+
+              // 如果返回了导入的数据，可以更新表单
+              if (result.result && Array.isArray(result.result)) {
+                // 映射数据字段，确保字段名正确
+                const mappedData = result.result.map(item => ({
+                  name: item.name || item.userName || '',
+                  cardCode: item.cardCode || item.idCard || item.idCardNo || '',
+                  phone: item.phone || item.phoneNumber || item.mobile || '',
+                  insurance: item.insurance || '',
+                }))
+                form.value.ylfkCheckApplicationPage.checkUsersList = mappedData
+              }
+            }
+            else {
+              uni.showToast({
+                title: result.message || 'Excel导入失败',
+                icon: 'none',
+                duration: 3000,
+              })
+            }
+          }
+          catch (error) {
+            console.error('解析上传结果失败:', error)
+            uni.showToast({
+              title: '上传结果解析失败',
+              icon: 'none',
+              duration: 3000,
+            })
+          }
+        },
+        fail: (error) => {
+          uni.hideLoading()
+          console.error('Excel文件上传失败:', error)
+          uni.showToast({
+            title: 'Excel文件上传失败',
+            icon: 'none',
+            duration: 3000,
+          })
+        },
+      })
+    },
+    fail: (error) => {
+      console.error('选择文件失败:', error)
+      uni.showToast({
+        title: '选择文件失败',
+        icon: 'none',
+        duration: 3000,
+      })
+    },
+  })
+  // #endif
+
+  // 在APP环境下使用chooseFile
+  // #ifdef APP-PLUS
+  plus.io.resolveLocalFileSystemURL('_documents/', (entry) => {
+    entry.createReader().readEntries((entries) => {
+      // 这里可以实现文件选择逻辑，或者使用第三方插件
+      uni.showToast({
+        title: 'APP环境下请使用文件管理器选择Excel文件',
+        icon: 'none',
+        duration: 3000,
+      })
+    })
+  })
+  // #endif
 }
 
 // 添加员工
@@ -375,17 +563,10 @@ function closeTransferPopup(data) {
 function closeApprovalPopup() {
   showApproval.value = false
 }
-const columns = ref([
-  '选项1',
-  '选项2',
-  '选项3',
-  '选项4',
-  '选项5',
-  '选项6',
-  '选项7',
-])
+const columns = ref([])
 const isShow = ref(false)
-const value1 = ref('选项1')
+const value1 = ref('')
+const roleType = ref('')
 function handleConfirm1({ value }) {
   value1.value = value
 }
@@ -425,11 +606,35 @@ async function getDepartList() {
 }
 async function Approval(form) {
   const res = await toApprovalApplication(form)
-  if (res.code === 200) {
+  if (
+    res.code === 200
+    && (roleType.value === '部门审核' || roleType.value === '领导审核')
+  ) {
     uni.switchTab({
       url: '/pages/audit/audit',
     })
   }
+  else {
+    uni.switchTab({
+      url: '/pages/doorKeeperApproval/doorKeeperApproval',
+    })
+  }
+}
+
+async function confirmReject() {
+  form1.user = currentLoginedUser
+  form1.applicationCode = applyId.value
+  form1.userOpinion = rejectReason.value
+  form1.applicationResult = '1'
+  await Approval(form1)
+}
+
+async function confirmTranfer() {
+  form1.user = currentLoginedUser
+  form1.applicationCode = applyId.value
+  form1.transUser = value1.value
+  form1.applicationResult = '2'
+  await Approval(form1)
 }
 
 async function confirmApproval() {
@@ -446,6 +651,17 @@ async function confirmApproval() {
   }
   else if (approvals.value.guardEnter === true) {
     form1.userOpinion = '我已确认入厂车辆物资信息完整'
+  }
+  else if (approvals.value.guardReturnPass === true || approvals.value.guardExit === true) {
+    // 门卫离厂审批：根据选中的复选框组合字符串
+    const opinions = []
+    if (approvals.value.guardReturnPass === true) {
+      opinions.push('已归还临时通行证')
+    }
+    if (approvals.value.guardExit === true) {
+      opinions.push('我已确认离厂信息完整')
+    }
+    form1.userOpinion = opinions.join(',')
   }
   // else if (approvals.value.guard === true) {
   //   form1.userOpinion = '已阅'
@@ -510,6 +726,21 @@ function initializeSelections() {
   }
 }
 
+async function getAllUser() {
+  const res = await getSysAllUserList()
+  if (res.code === 0) {
+    const tempArr = res.result.records.filter((item) => {
+      return item.roles_dictText !== '访客'
+    })
+    columns.value = tempArr.map((item) => {
+      return {
+        label: item.realname,
+        value: item.id,
+      }
+    })
+  }
+}
+
 onLoad(async (e) => {
   currentNode.value = e.currentNode
 
@@ -517,8 +748,10 @@ onLoad(async (e) => {
   isFromApproved.value = e.view === 'true'
 
   await getDepartList()
+  await getAllUser()
   if (e.applyId) {
     applyId.value = e.applyId
+    roleType.value = e.roleType
 
     // 获取申请详情
     const res = await getYlfkApplicationDetail(e.applyId, e.applicationType)
@@ -582,6 +815,10 @@ const excelUploader = ref(null)
 const carImageUploader = ref(null)
 // 物资照片上传器
 const goodsImageUploader = ref(null)
+// 离厂车辆照片上传器
+const leaveCarImageUploader = ref(null)
+// 离厂物资照片上传器
+const leaveGoodsImageUploader = ref(null)
 
 function getExcelUploader() {
   if (!excelUploader.value) {
@@ -781,6 +1018,174 @@ function deleteGoodsImage() {
   form1.goodsImage = ''
 }
 
+// 离厂车辆照片上传器
+function getLeaveCarImageUploader() {
+  if (!leaveCarImageUploader.value) {
+    const { loading, error, data, progress, run } = useUpload(
+      uploadFileUrl.USER_AVATAR,
+      {},
+      {
+        maxSize: 5,
+        onSuccess: (res) => {
+          form1.leaveCarImage = res.message
+          uni.showToast({
+            title: '离厂车辆照片上传成功',
+            icon: 'success',
+          })
+        },
+        onError: (err) => {
+          console.error('离厂车辆照片上传失败:', err)
+          uni.showToast({
+            title: '离厂车辆照片上传失败',
+            icon: 'none',
+          })
+        },
+      },
+    )
+
+    leaveCarImageUploader.value = { loading, error, data, progress, run }
+  }
+
+  return leaveCarImageUploader.value
+}
+
+function uploadLeaveCarImage() {
+  console.log('uploadLeaveCarImage 被调用')
+  const uploader = getLeaveCarImageUploader()
+  if (uploader.loading.value) {
+    uni.showToast({
+      title: '正在上传中，请稍候',
+      icon: 'none',
+    })
+    return
+  }
+  console.log('开始运行上传器')
+  uploader.run()
+}
+
+function previewLeaveCarImage() {
+  if (!form1.leaveCarImage)
+    return
+
+  const imageUrl = `${baseUrl}/${form1.leaveCarImage}`
+
+  uni.previewImage({
+    current: imageUrl,
+    urls: [imageUrl],
+    longPressActions: {
+      itemList: ['保存图片'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          uni.saveImageToPhotosAlbum({
+            filePath: imageUrl,
+            success: () => {
+              uni.showToast({
+                title: '保存成功',
+                icon: 'success',
+              })
+            },
+            fail: (err) => {
+              console.error('保存失败:', err)
+              uni.showToast({
+                title: '保存失败',
+                icon: 'none',
+              })
+            },
+          })
+        }
+      },
+    },
+  })
+}
+
+function deleteLeaveCarImage() {
+  form1.leaveCarImage = ''
+}
+
+// 离厂物资照片上传器
+function getLeaveGoodsImageUploader() {
+  if (!leaveGoodsImageUploader.value) {
+    const { loading, error, data, progress, run } = useUpload(
+      uploadFileUrl.USER_AVATAR,
+      {},
+      {
+        maxSize: 5,
+        onSuccess: (res) => {
+          form1.leaveGoodsImage = res.message
+          uni.showToast({
+            title: '离厂物资照片上传成功',
+            icon: 'success',
+          })
+        },
+        onError: (err) => {
+          console.error('离厂物资照片上传失败:', err)
+          uni.showToast({
+            title: '离厂物资照片上传失败',
+            icon: 'none',
+          })
+        },
+      },
+    )
+
+    leaveGoodsImageUploader.value = { loading, error, data, progress, run }
+  }
+
+  return leaveGoodsImageUploader.value
+}
+
+function uploadLeaveGoodsImage() {
+  console.log('uploadLeaveGoodsImage 被调用')
+  const uploader = getLeaveGoodsImageUploader()
+  if (uploader.loading.value) {
+    uni.showToast({
+      title: '正在上传中，请稍候',
+      icon: 'none',
+    })
+    return
+  }
+  console.log('开始运行物资照片上传器')
+  uploader.run()
+}
+
+function previewLeaveGoodsImage() {
+  if (!form1.leaveGoodsImage)
+    return
+
+  const imageUrl = `${baseUrl}/${form1.leaveGoodsImage}`
+
+  uni.previewImage({
+    current: imageUrl,
+    urls: [imageUrl],
+    longPressActions: {
+      itemList: ['保存图片'],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          uni.saveImageToPhotosAlbum({
+            filePath: imageUrl,
+            success: () => {
+              uni.showToast({
+                title: '保存成功',
+                icon: 'success',
+              })
+            },
+            fail: (err) => {
+              console.error('保存失败:', err)
+              uni.showToast({
+                title: '保存失败',
+                icon: 'none',
+              })
+            },
+          })
+        }
+      },
+    },
+  })
+}
+
+function deleteLeaveGoodsImage() {
+  form1.leaveGoodsImage = ''
+}
+
 function selectExcelFile() {
   const uploader = getExcelUploader()
   if (uploader.loading.value) {
@@ -884,7 +1289,6 @@ const shouldDisableCheckbox = computed(() => (nodeName) => {
   // 当前不是该节点的审批者（只在待审批页面时检查）
   const notCurrentApprover
     = !isFromApproved.value && currentNode.value !== nodeName
-
 
   return basicDisabled || nodeApproved || notCurrentApprover
 })
@@ -1024,7 +1428,7 @@ function isNodeApproved(nodeName) {
   // 优先检查opinionsList中的审批状态
   if (opinionsList.value && Array.isArray(opinionsList.value)) {
     const nodeApproval = opinionsList.value.find(item =>
-      item.nodeName === nodeName && item.applicatiResult_dictText === '通过'
+      item.nodeName === nodeName && item.applicatiResult_dictText === '通过',
     )
     if (nodeApproval) {
       return true
@@ -1185,20 +1589,9 @@ function isNodeApproved(nodeName) {
             <text class="section-title">
               员工清单 <text class="required">*</text>
             </text>
-            <view class="import-btn" @click="importExcel">
+            <view v-if="!disable" class="import-btn" @click="importExcel">
               <view class="i-carbon-upload text-16px text-blue-500" />
               <text>导入Excel</text>
-            </view>
-          </view>
-
-          <view v-if="uploadedFileName" class="uploaded-file">
-            <view class="file-info">
-              <view class="i-carbon-document text-20px text-green-500" />
-              <text class="file-name">{{ uploadedFileName }}</text>
-            </view>
-            <view class="download-btn" @click="downloadFile">
-              <view class="i-carbon-download text-16px text-blue-500" />
-              <text>下载</text>
             </view>
           </view>
 
@@ -1670,12 +2063,12 @@ function isNodeApproved(nodeName) {
 
               <view class="info-row">
                 <text class="info-label">车牌号：</text>
-                <text class="info-value">-</text>
+                <text class="info-value">{{ form.ylfkCheckApplicationPage.carCode || '-' }}</text>
               </view>
 
               <view class="info-row">
                 <text class="info-label">临时通行证号：</text>
-                <text class="info-value">-</text>
+                <text class="info-value">{{ form.ylfkCheckApplicationPage.carNumber || '-' }}</text>
               </view>
 
               <!-- 归还通行证复选框 -->
@@ -1691,9 +2084,48 @@ function isNodeApproved(nodeName) {
               <!-- 离厂车辆照片上传 -->
               <view class="upload-section">
                 <text class="upload-label">离厂车辆照片</text>
-                <view class="guard-upload-area">
-                  <text class="upload-icon">📷</text>
-                  <text class="upload-text">上传离厂车辆照片</text>
+
+                <!-- 如果没有上传图片，显示上传区域 -->
+                <view
+                  v-if="!form1.leaveCarImage"
+                  class="guard-upload-area"
+                  :class="{
+                    uploading: getLeaveCarImageUploader().loading.value,
+                    disabled: !canApproveNode('门卫离厂审批'),
+                  }"
+                  @click="() => { console.log('离厂车辆照片区域被点击', canApproveNode('门卫离厂审批')); canApproveNode('门卫离厂审批') && uploadLeaveCarImage() }"
+                >
+                  <view
+                    class="upload-icon"
+                    :class="{
+                      'i-carbon-cloud-upload': !getLeaveCarImageUploader().loading.value,
+                      'i-carbon-circle-dash': getLeaveCarImageUploader().loading.value,
+                    }"
+                  />
+                  <text class="upload-text">
+                    {{
+                      !canApproveNode('门卫离厂审批') ? "无权限上传"
+                      : getLeaveCarImageUploader().loading.value ? "上传中..."
+                        : "上传离厂车辆照片"
+                    }}
+                  </text>
+                </view>
+
+                <!-- 如果已上传，显示图片预览 -->
+                <view v-else class="image-preview-container">
+                  <image
+                    :src="`${baseUrl}/${form1.leaveCarImage}`"
+                    mode="aspectFill"
+                    class="preview-image"
+                    @click="previewLeaveCarImage"
+                  />
+                  <view
+                    v-if="canApproveNode('门卫离厂审批')"
+                    class="image-close-btn"
+                    @click.stop="deleteLeaveCarImage"
+                  >
+                    <view class="i-carbon-close text-12px" />
+                  </view>
                 </view>
               </view>
             </view>
@@ -1726,9 +2158,48 @@ function isNodeApproved(nodeName) {
               <!-- 离厂物资照片上传 -->
               <view class="upload-section">
                 <text class="upload-label">离厂物资照片</text>
-                <view class="guard-upload-area">
-                  <text class="upload-icon">📷</text>
-                  <text class="upload-text">上传离厂物资照片</text>
+
+                <!-- 如果没有上传图片，显示上传区域 -->
+                <view
+                  v-if="!form1.leaveGoodsImage"
+                  class="guard-upload-area"
+                  :class="{
+                    uploading: getLeaveGoodsImageUploader().loading.value,
+                    disabled: !canApproveNode('门卫离厂审批'),
+                  }"
+                  @click="() => { console.log('离厂物资照片区域被点击', canApproveNode('门卫离厂审批')); canApproveNode('门卫离厂审批') && uploadLeaveGoodsImage() }"
+                >
+                  <view
+                    class="upload-icon"
+                    :class="{
+                      'i-carbon-cloud-upload': !getLeaveGoodsImageUploader().loading.value,
+                      'i-carbon-circle-dash': getLeaveGoodsImageUploader().loading.value,
+                    }"
+                  />
+                  <text class="upload-text">
+                    {{
+                      !canApproveNode('门卫离厂审批') ? "无权限上传"
+                      : getLeaveGoodsImageUploader().loading.value ? "上传中..."
+                        : "上传离厂物资照片"
+                    }}
+                  </text>
+                </view>
+
+                <!-- 如果已上传，显示图片预览 -->
+                <view v-else class="image-preview-container">
+                  <image
+                    :src="`${baseUrl}/${form1.leaveGoodsImage}`"
+                    mode="aspectFill"
+                    class="preview-image"
+                    @click="previewLeaveGoodsImage"
+                  />
+                  <view
+                    v-if="canApproveNode('门卫离厂审批')"
+                    class="image-close-btn"
+                    @click.stop="deleteLeaveGoodsImage"
+                  >
+                    <view class="i-carbon-close text-12px" />
+                  </view>
                 </view>
               </view>
             </view>
@@ -1767,6 +2238,7 @@ function isNodeApproved(nodeName) {
           :show-reject="showReject"
           type="error"
           @close-popup="closePopup"
+          @confirm="confirmReject"
         />
       </template>
     </Dialog>
@@ -1786,6 +2258,7 @@ function isNodeApproved(nodeName) {
           :show-reject="showTransfer"
           type="primary"
           @close-popup="closeTransferPopup"
+          @confirm="confirmTranfer"
         />
       </template>
     </Dialog>

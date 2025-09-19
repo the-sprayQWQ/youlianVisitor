@@ -42,7 +42,7 @@ const initData = {
     visitorUser: '',
     visitorPhone: '',
     remark: '',
-    joinUserNum: '1',
+    joinUserNum: '2',
     isCard: '是',
     carCode: '',
     isGoods: '',
@@ -160,6 +160,7 @@ function onApprove() {
 }
 
 const value = ref<number[]>([])
+const roleType = ref('')
 
 function closePopup(data) {
   console.log(data)
@@ -220,10 +221,12 @@ async function getResult(code: string) {
 onLoad(async (e) => {
   currentNode.value = e.currentNode
   currentType.value = e.applicationType
+  roleType.value = e.roleType
   await getResult(e.applyId)
   const temp = opinionsList.value.filter(
     item => item.nodeName === e.currentNode,
   )
+  console.log(temp[0], '111')
   if (e.currentNode === '入厂门卫二维码检验') {
     approvals.value.guard = true
     approvals.value.leader = true
@@ -244,30 +247,37 @@ onLoad(async (e) => {
       approvalStatus.value.managerRejected = true
     }
   }
-  else if (
-    e.currentNode === '门卫审核'
-    && temp[0].applicatiResult_dictText === '通过'
-  ) {
+  else if (e.currentNode === '门卫审核') {
+    // 门卫审核时，前面的审核应该已经通过了（用于状态回显）
     approvals.value.manager = true
-    approvals.value.guard = true
-  }
-  else if (
-    e.currentNode === '门卫审核'
-    && temp[0].applicatiResult_dictText !== '通过'
-  ) {
-    approvals.value.manager = true
-    approvals.value.guard = false
-    if (temp[0].applicatiResult_dictText === '驳回') {
-      approvalStatus.value.guardRejected = true
+
+    // 如果是学习交流类型(1)，还需要显示分管领导意见已通过
+    if (e.applicationType === '1') {
+      approvals.value.leader = true
+    }
+
+    if (temp[0].applicatiResult_dictText === '通过') {
+      approvals.value.guard = true
+    } else if (temp[0].applicatiResult_dictText !== '通过') {
+      approvals.value.guard = false
+      if (temp[0].applicatiResult_dictText === '驳回') {
+        approvalStatus.value.guardRejected = true
+      }
     }
   }
-  else if (
-    e.currentNode === '分管领导审核'
-    && temp[0].applicatiResult_dictText === '通过'
-  ) {
+  else if (e.currentNode === '分管领导审核') {
+    // 能到分管领导审核说明前面的部门经理审核已经通过
+    approvals.value.manager = true
+    if (temp[0].applicatiResult_dictText === '通过') {
+      approvals.value.leader = true
+      approvals.value.guard = false
+      console.log('通过')
+    }
+  }
+  else if (e.currentNode === '入厂') {
+    approvals.value.guard = true
     approvals.value.leader = true
     approvals.value.manager = true
-    approvals.value.guard = false
   }
 
   if (e.view === 'true') {
@@ -303,7 +313,7 @@ onLoad(async (e) => {
   if (e.roleType === '访客') {
     isShow.value = false
   }
-  else if (e.roleType === '部门审核') {
+  else if (e.roleType === '部门审核' || e.roleType === '领导审核') {
     await getResult(e.applyId)
     disable.value = true
     if (e.view === 'true') {
@@ -340,9 +350,17 @@ async function submit() {
 
 async function Approval(form) {
   const res = await toApprovalApplication(form)
-  if (res.code === 200) {
+  if (
+    res.code === 200
+    && (roleType.value === '部门审核' || roleType.value === '领导审核')
+  ) {
     uni.switchTab({
       url: '/pages/audit/audit',
+    })
+  }
+  else {
+    uni.switchTab({
+      url: '/pages/doorKeeperApproval/doorKeeperApproval',
     })
   }
 }
@@ -431,7 +449,9 @@ async function confirmTranfer() {
     <view v-if="applyId" class="mb-12 box-border p-3">
       <view class="approval-section">
         <view
-          v-if="['入厂门卫二维码检验', '部门审核', '门卫审核'].includes(currentNode)"
+          v-if="
+            ['入厂门卫二维码检验', '分管领导审核', '部门审核', '部门经理审核', '入厂'].includes(currentNode)
+          "
           class="approval-item"
         >
           <text class="approval-title">经理意见</text>
@@ -456,7 +476,7 @@ async function confirmTranfer() {
 
         <view
           v-if="
-            ['分管领导审核', '入厂门卫二维码检验'].includes(currentNode)
+            ['分管领导审核', '入厂门卫二维码检验', '入厂'].includes(currentNode)
               && currentType === '1'
           "
           class="approval-item"
@@ -470,7 +490,7 @@ async function confirmTranfer() {
         </view>
 
         <view
-          v-if="['入厂门卫二维码检验', '门卫审核'].includes(currentNode)"
+          v-if="['入厂门卫二维码检验', '门卫审核', '入厂'].includes(currentNode)"
           class="approval-item-extra"
         >
           <view style="display: flex; justify-content: space-between">
@@ -499,14 +519,22 @@ async function confirmTranfer() {
               <text class="info-label">临时访客证号</text>
               <view class="info-value">
                 <!-- <text>V2508080001</text> -->
-                <input v-model="form1.visitorNumber" type="text" :disabled="isView">
+                <input
+                  v-model="form1.visitorNumber"
+                  type="text"
+                  :disabled="isView"
+                >
               </view>
             </view>
             <view class="info-item">
               <text class="info-label">临时车牌号</text>
               <view class="info-value">
                 <!-- <text>T2508080001</text> -->
-                <input v-model="form1.carNumber" type="text" :disabled="isView">
+                <input
+                  v-model="form1.carNumber"
+                  type="text"
+                  :disabled="isView"
+                >
               </view>
             </view>
           </view>

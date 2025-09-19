@@ -19,6 +19,16 @@ const pageSize = ref(20)
 const isLoading = ref(false)
 const hasMore = ref(true)
 const total = ref(0)
+const columns = ref([{
+  label: '学习交流',
+  value: '1',
+}, {
+  label: '业务沟通',
+  value: '0',
+}, {
+  label: '员工核验',
+  value: '2',
+}])
 
 // 获取列表数据
 async function getApplyList(isLoadMore = false) {
@@ -30,10 +40,21 @@ async function getApplyList(isLoadMore = false) {
     const userStore = useUserStore()
     const createBy = userStore.userInfo?.userInfo?.username
 
+    // 处理日期格式
+    let applicationDate = ''
+    if (startDate.value && endDate.value) {
+      const start = new Date(startDate.value).toISOString().split('T')[0]
+      const end = new Date(endDate.value).toISOString().split('T')[0]
+      applicationDate = `${start},${end}`
+    }
+
     const res = await getYlfkApplicationList(
       isLoadMore ? currentPage.value : 1,
       pageSize.value,
       createBy,
+      applicationCode.value || undefined,
+      applicationDate || undefined,
+      applicationType.value || undefined,
     )
 
     if (res.code === 200) {
@@ -89,8 +110,10 @@ async function onRefresh() {
 }
 
 // 搜索功能
-const value = ref<number>(Date.now())
-const applyId = ref<string>('')
+const startDate = ref<number>()
+const endDate = ref<number>()
+const applicationCode = ref<string>('')
+const applicationType = ref<string>('')
 
 async function handleSearch() {
   // 重置分页状态
@@ -123,12 +146,12 @@ const roleType = computed(() => userStore.roleType)
 function toDetail(id: string, applyId: string, applicationName: string, currentNode: string) {
   if (applicationName === '0' || applicationName === '1') {
     uni.navigateTo({
-      url: `/pages/visitorApplication/visitorApplication?id=${id}&applyId=${applyId}&roleType=${roleType.value}&applicationType=${applicationName}&currentNode=${currentNode}`,
+      url: `/pages/visitorApplication/visitorApplication?id=${id}&applyId=${applyId}&roleType=${roleType.value}&applicationType=${applicationName}&currentNode=${currentNode}&view=true`,
     })
   }
   else {
     uni.navigateTo({
-      url: `/pages/employApplication/employApplication?id=${id}&applyId=${applyId}&roleType=${roleType.value}&applicationType=${applicationName}&currentNode=${currentNode}`,
+      url: `/pages/employApplication/employApplication?id=${id}&applyId=${applyId}&roleType=${roleType.value}&applicationType=${applicationName}&currentNode=${currentNode}&view=true`,
     })
   }
 }
@@ -142,16 +165,16 @@ function toDetail(id: string, applyId: string, applicationName: string, currentN
         申请日期
       </view>
       <view class="date_select_bar">
-        <wd-datetime-picker v-model="value" type="date" />
-        <text class="ml-2.5 mr-2.5 mt-2 text-sm text-#9ba1a5">至</text>
-        <wd-datetime-picker v-model="value" type="date" />
+        <wd-datetime-picker v-model="startDate" type="date" />
+        <text class="ml-2 mr-2.5 mt-1 text-sm text-#9ba1a5">至</text>
+        <wd-datetime-picker v-model="endDate" type="date" />
       </view>
       <view class="text-sm text-#9ba1a5">
         申请单号
       </view>
       <view class="search_input">
         <wd-input
-          v-model="applyId"
+          v-model="applicationCode"
           prefix-icon=""
           suffix-icon="search"
           placeholder="请输入申请单号"
@@ -162,7 +185,7 @@ function toDetail(id: string, applyId: string, applicationName: string, currentN
         业务类型
       </view>
       <view class="select_bar">
-        <wd-picker />
+        <wd-picker v-model="applicationType" :columns="columns" />
       </view>
       <view class="submit">
         <button
@@ -183,7 +206,7 @@ function toDetail(id: string, applyId: string, applicationName: string, currentN
 
     <!-- 主体部分 -->
     <view class="content">
-      <appoint-record-card :record-list="applyList" @to-detail="toDetail" />
+      <appoint-record-card :record-list="applyList" @to-detail="toDetail" @refresh="onRefresh" />
 
       <!-- 加载状态提示 -->
       <view class="load-status">

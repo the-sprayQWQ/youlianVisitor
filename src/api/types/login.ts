@@ -14,6 +14,7 @@ export interface IUserInfoVo {
     roles: string
     id: string
     username: string
+    phone: string
   }
 }
 

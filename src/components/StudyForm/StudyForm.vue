@@ -23,6 +23,8 @@ const form = defineModel('form', {
 onShow(async () => {
   await getDepartList()
   initializeSelections()
+  // 确保同行人员数量与参与人数匹配
+  initializeCompanionList()
 })
 
 // 添加 onMounted 作为备用初始化
@@ -36,6 +38,9 @@ onMounted(async () => {
     // 如果都已经存在，直接初始化选择
     initializeSelections()
   }
+
+  // 初始化同行人员数量，确保与参与人数匹配
+  initializeCompanionList()
 })
 
 defineExpose({
@@ -84,8 +89,12 @@ function updateParticipantCards(e: any) {
     })
     e.target.value = 1
   }
-  else if (e.target.value > form.value.ylfkApplicationPage.ylfkApplicationUserList.length) {
-    const count = e.target.value - form.value.ylfkApplicationPage.ylfkApplicationUserList.length
+
+  // 同行人员数量 = 参与人数 - 1
+  const companionCount = Math.max(0, e.target.value - 1)
+
+  if (companionCount > form.value.ylfkApplicationPage.ylfkApplicationUserList.length) {
+    const count = companionCount - form.value.ylfkApplicationPage.ylfkApplicationUserList.length
     const newItem = Array.from({ length: count }, () => ({
       name: '',
       phone: '',
@@ -99,8 +108,8 @@ function updateParticipantCards(e: any) {
     }))
     form.value.ylfkApplicationPage.ylfkApplicationUserList.push(...newItem)
   }
-  else if (e.target.value < form.value.ylfkApplicationPage.ylfkApplicationUserList.length) {
-    form.value.ylfkApplicationPage.ylfkApplicationUserList.splice(e.target.value, form.value.ylfkApplicationPage.ylfkApplicationUserList.length - e.target.value)
+  else if (companionCount < form.value.ylfkApplicationPage.ylfkApplicationUserList.length) {
+    form.value.ylfkApplicationPage.ylfkApplicationUserList.splice(companionCount, form.value.ylfkApplicationPage.ylfkApplicationUserList.length - companionCount)
   }
 }
 
@@ -188,6 +197,45 @@ function initializeSelections() {
     }
     else {
       selectedDepartment.value = null
+    }
+  }
+}
+
+// 初始化同行人员数量，确保与参与人数匹配
+function initializeCompanionList() {
+  if (!form.value?.ylfkApplicationPage) return
+
+  const participantCount = Number(form.value.ylfkApplicationPage.joinUserNum) || 1
+  const companionCount = Math.max(0, participantCount - 1)
+  const currentCompanionCount = form.value.ylfkApplicationPage.ylfkApplicationUserList?.length || 0
+
+  if (companionCount !== currentCompanionCount) {
+    if (companionCount === 0) {
+      // 参与人数为1时，清空同行人员列表
+      form.value.ylfkApplicationPage.ylfkApplicationUserList = []
+    }
+    else if (companionCount > currentCompanionCount) {
+      // 需要增加同行人员
+      const count = companionCount - currentCompanionCount
+      const newItems = Array.from({ length: count }, () => ({
+        name: '',
+        phone: '',
+        cardType: '',
+        idCard: '',
+        visitorNumber: '',
+        applicationStatus: '',
+        carNumber: '',
+        enterTime: '',
+        leaveTime: '',
+      }))
+      form.value.ylfkApplicationPage.ylfkApplicationUserList.push(...newItems)
+    }
+    else {
+      // 需要减少同行人员
+      form.value.ylfkApplicationPage.ylfkApplicationUserList.splice(
+        companionCount,
+        currentCompanionCount - companionCount
+      )
     }
   }
 }

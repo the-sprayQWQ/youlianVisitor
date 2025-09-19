@@ -19,7 +19,8 @@ const roleType = userStore.roleType
 
 // 搜索表单数据
 const searchForm = ref({
-  date: '',
+  startDate: '',
+  endDate: '',
   name: '',
   phone: '',
   idCard: '',
@@ -71,11 +72,26 @@ async function getVisitorList(isLoadingMore = false) {
       ? approvalPagination.value.currentPage
       : 1
 
+    // 构建搜索参数
+    let applicationDate = ''
+    if (searchForm.value.startDate && searchForm.value.endDate) {
+      applicationDate = `${searchForm.value.startDate},${searchForm.value.endDate}`
+    } else if (searchForm.value.startDate) {
+      applicationDate = `${searchForm.value.startDate},${searchForm.value.startDate}`
+    } else if (searchForm.value.endDate) {
+      applicationDate = `${searchForm.value.endDate},${searchForm.value.endDate}`
+    }
+
     const res = await getYlfkProcessApplication(
       currentPageNum,
       approvalPagination.value.pageSize,
       '0',
       LoginUserId,
+      undefined, // applicationStatus
+      searchForm.value.idCard || undefined, // idCard
+      searchForm.value.name || undefined, // user
+      applicationDate || undefined, // applicationDate
+      searchForm.value.phone || undefined, // applicationCode
     )
 
     if (res.code === 200) {
@@ -124,11 +140,27 @@ async function getAllReadyIn(isLoadingMore = false) {
       ? inListPagination.value.currentPage
       : 1
 
-    // 如果你的getInVisitorList API不支持分页，需要修改API或者这里的调用
-    // 这里假设已经支持分页参数
-    const res = await getInVisitorList(
+    // 构建搜索参数
+    let applicationDate = ''
+    if (searchForm.value.startDate && searchForm.value.endDate) {
+      applicationDate = `${searchForm.value.startDate},${searchForm.value.endDate}`
+    } else if (searchForm.value.startDate) {
+      applicationDate = `${searchForm.value.startDate},${searchForm.value.startDate}`
+    } else if (searchForm.value.endDate) {
+      applicationDate = `${searchForm.value.endDate},${searchForm.value.endDate}`
+    }
+
+    // 使用 getYlfkProcessApplication 来获取在厂访客列表，状态为 '3'
+    const res = await getYlfkProcessApplication(
       currentPageNum,
       inListPagination.value.pageSize,
+      '0',
+      LoginUserId,
+      '3', // applicationStatus 为 '3' 表示在厂访客
+      searchForm.value.idCard || undefined, // idCard
+      searchForm.value.name || undefined, // user
+      applicationDate || undefined, // applicationDate
+      searchForm.value.phone || undefined, // applicationCode
     )
 
     if (res.code === 200) {
@@ -170,6 +202,15 @@ onShow(async () => {
   await getAllReadyIn()
 })
 
+// 日期选择器处理方法
+function handleStartDateChange(e: any) {
+  searchForm.value.startDate = e.detail.value
+}
+
+function handleEndDateChange(e: any) {
+  searchForm.value.endDate = e.detail.value
+}
+
 // 搜索方法
 function handleSearch() {
   console.log('搜索', searchForm.value)
@@ -178,13 +219,27 @@ function handleSearch() {
   if (activeTab.value === 0) {
     approvalPagination.value.currentPage = 1
     approvalPagination.value.hasMore = true
+    approvalList.value = [] // 清空当前列表
     getVisitorList()
   }
   else {
     inListPagination.value.currentPage = 1
     inListPagination.value.hasMore = true
+    inList.value = [] // 清空当前列表
     getAllReadyIn()
   }
+}
+
+// 清空搜索条件
+function clearSearch() {
+  searchForm.value = {
+    startDate: '',
+    endDate: '',
+    name: '',
+    phone: '',
+    idCard: '',
+  }
+  handleSearch() // 重新搜索
 }
 
 function toApproval(
@@ -269,23 +324,31 @@ const currentPagination = computed(() => {
     <view class="search-section">
       <view class="search-form">
         <view class="form-row">
-          <wd-input
-            v-model="searchForm.date"
-            placeholder="yyyy/mm/日"
-            class="form-input"
-            clearable
-          />
-          <wd-input
-            v-model="searchForm.name"
-            placeholder="姓名"
-            class="form-input"
-            clearable
-          />
+          <picker
+            mode="date"
+            :value="searchForm.startDate"
+            @change="handleStartDateChange"
+            class="date-picker"
+          >
+            <view class="picker-input" :class="{ 'has-value': searchForm.startDate }">
+              {{ searchForm.startDate || '开始日期' }}
+            </view>
+          </picker>
+          <picker
+            mode="date"
+            :value="searchForm.endDate"
+            @change="handleEndDateChange"
+            class="date-picker"
+          >
+            <view class="picker-input" :class="{ 'has-value': searchForm.endDate }">
+              {{ searchForm.endDate || '结束日期' }}
+            </view>
+          </picker>
         </view>
         <view class="form-row">
           <wd-input
-            v-model="searchForm.phone"
-            placeholder="申请单号"
+            v-model="searchForm.name"
+            placeholder="姓名"
             class="form-input"
             clearable
           />
@@ -296,15 +359,32 @@ const currentPagination = computed(() => {
             clearable
           />
         </view>
-        <wd-button
-          type="primary"
-          block
-          class="search-btn"
-          @click="handleSearch"
-        >
-          <view i-carbon-search class="search-icon" />
-          搜索
-        </wd-button>
+        <view class="form-row single-input">
+          <wd-input
+            v-model="searchForm.phone"
+            placeholder="申请单号"
+            class="form-input"
+            clearable
+          />
+        </view>
+        <view class="button-row">
+          <wd-button
+            type="primary"
+            class="search-btn"
+            @click="handleSearch"
+          >
+            <view i-carbon-search class="search-icon" />
+            搜索
+          </wd-button>
+          <wd-button
+            type="default"
+            class="reset-btn"
+            @click="clearSearch"
+          >
+            <view i-carbon-restart class="reset-icon" />
+            重置
+          </wd-button>
+        </view>
       </view>
     </view>
 
@@ -362,38 +442,146 @@ const currentPagination = computed(() => {
 
 .search-section {
   background-color: #fff;
-  padding: 40rpx 32rpx;
+  padding: 32rpx;
+  margin-bottom: 16rpx;
 
   .search-form {
     .form-row {
       display: flex;
       gap: 20rpx;
-      margin-bottom: 28rpx;
+      margin-bottom: 24rpx;
+
+      &.single-input {
+        justify-content: flex-start;
+
+        .form-input {
+          flex: none;
+          width: 100%;
+        }
+
+        :deep(.wd-input) {
+          width: 100% !important;
+        }
+      }
 
       .form-input {
         flex: 1;
+        height: 80rpx;
+        background-color: #f5f5f5;
+        border-radius: 12rpx;
+        border: 1rpx solid #e0e0e0;
+        font-size: 28rpx;
+        color: #333;
+        transition: all 0.2s ease;
+
+        &:focus {
+          background-color: #fff;
+          border-color: #007aff;
+        }
+      }
+
+      .date-picker {
+        flex: 1;
+
+        .picker-input {
+          height: 80rpx;
+          background-color: #fafbfc;
+          border-radius: 12rpx;
+          border: 1rpx solid #e0e0e0;
+          display: flex;
+          align-items: center;
+          padding: 0 24rpx;
+          font-size: 28rpx;
+          color: #999;
+          transition: all 0.2s ease;
+          position: relative;
+
+          &.has-value {
+            color: #333;
+            background-color: #fff;
+            border-color: #007aff;
+          }
+
+          &::after {
+            content: '';
+            position: absolute;
+            right: 24rpx;
+            width: 28rpx;
+            height: 28rpx;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23999'%3E%3Cpath d='M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z'/%3E%3C/svg%3E");
+            background-size: contain;
+            background-repeat: no-repeat;
+          }
+
+          &:active {
+            background-color: #fff;
+            border-color: #007aff;
+          }
+        }
       }
 
       &:last-of-type {
-        margin-bottom: 40rpx;
+        margin-bottom: 32rpx;
       }
     }
 
+    .button-row {
+      display: flex;
+      gap: 20rpx;
+      margin-top: 8rpx;
+    }
+
     .search-btn {
+      flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 16rpx;
-      height: 96rpx;
-      border-radius: 48rpx;
-      font-size: 32rpx;
+      gap: 12rpx;
+      height: 80rpx;
+      border-radius: 12rpx;
+      font-size: 28rpx;
       font-weight: 500;
-      background: linear-gradient(135deg, #4285f4 0%, #5a9bf8 100%);
-      box-shadow: 0 8rpx 24rpx rgba(66, 133, 244, 0.3);
+      background-color: #007aff;
+      color: #fff;
+      border: none;
+      transition: all 0.2s ease;
+
+      &:active {
+        background-color: #0056d3;
+        transform: scale(0.98);
+      }
 
       .search-icon {
-        width: 36rpx;
-        height: 36rpx;
+        width: 32rpx;
+        height: 32rpx;
+        color: #fff;
+      }
+    }
+
+    .reset-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12rpx;
+      height: 80rpx;
+      border-radius: 12rpx;
+      font-size: 28rpx;
+      font-weight: 500;
+      background-color: #f5f5f5;
+      color: #666;
+      border: 1rpx solid #e0e0e0;
+      transition: all 0.2s ease;
+
+      &:active {
+        background-color: #e0e0e0;
+        transform: scale(0.98);
+      }
+
+      .reset-icon {
+        width: 32rpx;
+        height: 32rpx;
+        color: #666;
       }
     }
   }

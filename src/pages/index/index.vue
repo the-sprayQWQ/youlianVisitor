@@ -7,6 +7,7 @@
     // 'custom' 表示开启自定义导航栏，默认 'default'
     "navigationStyle": "default",
     "navigationBarTitleText": "首页",
+    "enablePullDownRefresh": true,
   },
 }
 </route>
@@ -15,6 +16,8 @@
 import { getYlfkApplicationList } from '@/api/role'
 
 const applyList = ref([])
+const isRefreshing = ref(false)
+
 async function getApplyList() {
   const userStore = useUserStore()
   const createBy = userStore.userInfo?.userInfo?.username
@@ -24,12 +27,46 @@ async function getApplyList() {
   }
 }
 
+// 下拉刷新处理函数
+async function handlePullDownRefresh() {
+  if (isRefreshing.value)
+    return
+
+  isRefreshing.value = true
+  try {
+    await getApplyList()
+    uni.showToast({
+      title: '刷新成功',
+      icon: 'success',
+      duration: 1500,
+    })
+  }
+  catch (error) {
+    console.error('刷新失败:', error)
+    uni.showToast({
+      title: '刷新失败',
+      icon: 'error',
+      duration: 1500,
+    })
+  }
+  finally {
+    isRefreshing.value = false
+    // 停止下拉刷新动画
+    uni.stopPullDownRefresh()
+  }
+}
+
 // onLoad(async () => {
 //   await getApplyList()
 // })
 
 onShow(async () => {
   await getApplyList()
+})
+
+// 注册下拉刷新生命周期
+onPullDownRefresh(async () => {
+  await handlePullDownRefresh()
 })
 function handleEntryClick(type: string) {
   console.log('点击了功能入口:', type)
@@ -55,10 +92,18 @@ function handleRecordClick(
   applicationType: string,
   applyId?: string,
   currentNode?: string,
+  processType_dictText?: string,
+  applicationType_DictText?: string,
+  createTime?: string,
 ) {
   console.log('点击了记录项:', id, applyId)
   // 这里可以添加跳转逻辑
-  if (applicationType === '0' || applicationType === '1') {
+  if (processType_dictText === '已通过') {
+    uni.navigateTo({
+      url: `/pages/qrCode/qrCode?applyId=${applyId}&applicationType_DictText=${applicationType_DictText}&createTime=${createTime}&applicationType=${applicationType}`,
+    })
+  }
+  else if (applicationType === '0' || applicationType === '1') {
     uni.navigateTo({
       url: `/pages/visitorApplication/visitorApplication?id=${id}&applyId=${
         applyId
@@ -83,7 +128,7 @@ const roleType = computed(() => userStore.roleType)
     <scroll-view class="main-content" scroll-y :show-scrollbar="false">
       <!-- 欢迎标题 -->
       <view class="welcome-section">
-        <text class="welcome-title">您好，欢迎使用访客系统</text>
+        <text class="welcome-title">您好，欢迎使用友联畅行智管系统</text>
         <text class="welcome-subtitle">请选择您需要的服务</text>
       </view>
 
@@ -158,6 +203,9 @@ const roleType = computed(() => userStore.roleType)
                 item.applicationName,
                 item.applicationCode,
                 item.currentName,
+                item.processType_dictText,
+                item.applicationTypeName,
+                item.createTime,
               )
             "
           >

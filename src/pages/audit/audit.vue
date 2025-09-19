@@ -40,6 +40,34 @@ const approvedRecords = ref([])
 // 当前选中的tab
 const activeTab = ref('pending') // pending: 待审批, approved: 已审批
 
+// 搜索表单数据
+const searchForm = ref({
+  applicationNo: '',
+  startDate: '',
+  endDate: '',
+  applicationType: '',
+  status: '',
+})
+
+// 申请类型选项
+const applicationTypes = [
+  { label: '全部申请类型', value: '' },
+  { label: '业务沟通', value: '0' },
+  { label: '学习交流', value: '1' },
+  { label: '员工核验', value: '2' },
+]
+
+// 状态选项
+const statusTypes = [
+  { label: '全部状态', value: '' },
+  { label: '审批中', value: '0' },
+  { label: '已通过', value: '1' },
+  { label: '已拒绝', value: '2' },
+]
+
+const applicationTypeIndex = ref(0)
+const statusTypeIndex = ref(0)
+
 onShow(async () => {
   activeTab.value = 'pending'
   await getPendingList()
@@ -55,11 +83,21 @@ async function getPendingList(isLoadingMore = false) {
 
     const currentPageNum = isLoadingMore ? pendingCurrentPage.value : 1
 
+    // 处理日期格式
+    let applicationDate = ''
+    if (searchForm.value.startDate && searchForm.value.endDate) {
+      applicationDate = `${searchForm.value.startDate},${searchForm.value.endDate}`
+    }
+
     const res = await getYlfkProcessApplication(
       currentPageNum,
       pendingPageSize.value,
       '0', // 待审批状态
       LoginUserId,
+      searchForm.value.status || undefined,
+      applicationDate || undefined,
+      searchForm.value.applicationNo || undefined,
+      searchForm.value.applicationType || undefined,
     )
 
     if (res.code === 200) {
@@ -106,11 +144,21 @@ async function getApprovedList(isLoadingMore = false) {
 
     const currentPageNum = isLoadingMore ? approvedCurrentPage.value : 1
 
+    // 处理日期格式
+    let applicationDate = ''
+    if (searchForm.value.startDate && searchForm.value.endDate) {
+      applicationDate = `${searchForm.value.startDate},${searchForm.value.endDate}`
+    }
+
     const res = await getYlfkProcessApplication(
       currentPageNum,
       approvedPageSize.value,
       '1', // 已审批状态，根据你的API调整这个参数
       LoginUserId,
+      searchForm.value.status || undefined,
+      applicationDate || undefined,
+      searchForm.value.applicationNo || undefined,
+      searchForm.value.applicationType || undefined,
     )
 
     if (res.code === 200) {
@@ -189,34 +237,22 @@ async function toApprove(
   }
 }
 
-// 搜索表单数据
-const searchForm = ref({
-  applicationNo: '',
-  startDate: '',
-  endDate: '',
-  applicationType: '',
-  status: '',
-})
-
-// 申请类型选项
-const applicationTypes = [
-  { label: '全部申请类型', value: '' },
-  { label: '业务洽谈', value: '业务洽谈' },
-  { label: '学习交流', value: '学习交流' },
-  { label: '参观访问', value: '参观访问' },
-  { label: '技术支持', value: '技术支持' },
-]
-
-// 状态选项
-const statusTypes = [
-  { label: '全部状态', value: '' },
-  { label: '待审批', value: 'pending' },
-  { label: '已通过', value: 'approved' },
-  { label: '已拒绝', value: 'rejected' },
-]
-
-const applicationTypeIndex = ref(0)
-const statusTypeIndex = ref(0)
+// 查看详情
+function handleView(record: any) {
+  console.log('查看详情:', record)
+  const views = true
+  // 这里可以跳转到详情页面
+  if (record.applicationName === '0' || record.applicationName === '1') {
+    uni.navigateTo({
+      url: `/pages/visitorApplication/visitorApplication?applyId=${record.applicationCode}&applicationType=${record.applicationName}&roleType=${roleType.value}&view=${views}&currentNode=${record.currentName}`,
+    })
+  }
+  else {
+    uni.navigateTo({
+      url: `/pages/employApplication/employApplication?applyId=${record.applicationCode}&applicationType=${record.applicationName}&roleType=${roleType.value}&view=${views}&currentNode=${record.currentName}`,
+    })
+  }
+}
 
 // 处理开始日期选择
 function handleStartDateChange(e: any) {
@@ -276,23 +312,6 @@ function handleApprove(record: any) {
   })
 }
 
-// 查看详情
-function handleView(record: any) {
-  console.log('查看详情:', record)
-  const views = true
-  // 这里可以跳转到详情页面
-  if (record.applicationName === '0' || record.applicationName === '1') {
-    uni.navigateTo({
-      url: `/pages/visitorApplication/visitorApplication?applyId=${record.applicationCode}&applicationType=${record.applicationName}&roleType=${roleType.value}&view=${views}&currentNode=${record.currentName}`,
-    })
-  }
-  else {
-    uni.navigateTo({
-      url: `/pages/employApplication/employApplication?applyId=${record.applicationCode}&applicationType=${record.applicationName}&roleType=${roleType.value}&view=${views}&currentNode=${record.currentName}`,
-    })
-  }
-}
-
 // 获取状态样式类
 function getStatusClass(status: string) {
   switch (status) {
@@ -302,6 +321,20 @@ function getStatusClass(status: string) {
       return 'status-rejected'
     default:
       return 'status-default'
+  }
+}
+
+// 获取状态盒子样式类
+function getStatusBoxClass(status: string) {
+  switch (status) {
+    case '已通过':
+      return 'status-box-approved'
+    case '已拒绝':
+      return 'status-box-rejected'
+    case '审批中':
+      return 'status-box-pending'
+    default:
+      return 'status-box-default'
   }
 }
 
@@ -566,6 +599,9 @@ onPullDownRefresh(async () => {
           </view>
 
           <view class="item-actions">
+            <view class="status-box" :class="getStatusBoxClass(record.applicationStatus)">
+              {{ record.applicationStatus }}
+            </view>
             <view class="view-btn">
               查看
             </view>
@@ -997,6 +1033,42 @@ onPullDownRefresh(async () => {
           display: flex;
           align-items: center;
           justify-content: center;
+        }
+
+        .status-box {
+          height: 64rpx;
+          padding: 0 20rpx;
+          border-radius: 8rpx;
+          font-size: 26rpx;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1rpx solid #e0e0e0;
+
+          &.status-box-approved {
+            background: #f6ffed;
+            color: #52c41a;
+            border-color: #b7eb8f;
+          }
+
+          &.status-box-rejected {
+            background: #fff2f0;
+            color: #ff4d4f;
+            border-color: #ffb3b3;
+          }
+
+          &.status-box-pending {
+            background: #e6f7ff;
+            color: #1890ff;
+            border-color: #91d5ff;
+          }
+
+          &.status-box-default {
+            background: #f0f0f0;
+            color: #666;
+            border-color: #e0e0e0;
+          }
         }
 
         .view-btn {
